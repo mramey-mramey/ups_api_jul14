@@ -1,0 +1,158 @@
+﻿@{ ViewBag.Title = "UPS Time in Transit Tool"; }
+
+<div class="text-center">
+    <form class="row justify-content-center p-4 p-md-5 order bg-light" id="uploadFrm" enctype="multipart/form-data" method="post" action="/Home/Index">
+        <label for="formFile" class="form-label">Upload a .csv file. Please make sure your file matches <a href="~/Content/template.csv">this</a> template.</label>
+
+        <div class="col-auto">
+            <input class="form-control" type="file" id="formFile" accept=".csv" name="postedFile">
+        </div>
+        <div class="col-auto">
+            <input type="submit" value="Upload" id="submitBtn" class="btn btn-success" />
+        </div>
+    </form>
+</div>
+
+
+
+    @if (Model != null)
+    {
+        <input class="form-check-input" type="checkbox" value="" id="chkHideTable">
+        <label class="form-check-label" for="flexCheckDefault">
+            Hide Table
+        </label>
+        <div id="errorTxtArea">
+            @foreach (var line in Model.ParsedData)
+            {
+                if (!string.IsNullOrEmpty(line.ErrorMsg))
+                {
+                    <div class="errorTxt"><em>@line.ErrorMsg</em></div>
+                }
+            }
+        </div>
+
+        <table class="table table-hover" id="tblResults">
+            <thead>
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">From Zip</th>
+                    <th scope="col">To Zip</th>
+                    <th scope="col">Service Code</th>
+                    <th scope="col">Service Description</th>
+                    <th scope="col">Pickup Date / Time</th>
+                    <th scope="col">Arrival Date / Time</th>
+                    <th scope="col">Business Days in Transit</th>
+                    <th scope="col">Arrival Day</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < Model.ApiResponse.Count; ++i)
+                {
+                    foreach (var subLine in Model.ApiResponse[i].Item.ServiceSummary)
+                    {
+                        <tr class="bg-@(i % 2)">
+                            <td>@(i + 1)</td>
+                            <td>@Model.ApiResponse[i].Item.ShipFrom.Address.PostalCode</td>
+                            <td>@Model.ApiResponse[i].Item.ShipTo.Address.PostalCode</td>
+                            <td>@subLine.Service.Code</td>
+                            <td>@subLine.Service.Description</td>
+                            <td>@subLine.EstimatedArrival.Pickup.Date.Substring(0, 4)-@subLine.EstimatedArrival.Pickup.Date.Substring(4, 2)-@subLine.EstimatedArrival.Pickup.Date.Substring(6, 2)  / @subLine.EstimatedArrival.Pickup.Time.Substring(0, 2):@subLine.EstimatedArrival.Pickup.Time.Substring(2, 2) </td>
+                            <td>@subLine.EstimatedArrival.Arrival.Date.Substring(0, 4)-@subLine.EstimatedArrival.Arrival.Date.Substring(4, 2)-@subLine.EstimatedArrival.Arrival.Date.Substring(6, 2) / @subLine.EstimatedArrival.Arrival.Time.Substring(0, 2):@subLine.EstimatedArrival.Arrival.Time.Substring(2, 2)</td>
+                            <td>@subLine.EstimatedArrival.BusinessDaysInTransit</td>
+                            <td>@subLine.EstimatedArrival.DayOfWeek</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+        <div class="text-center">
+            <button type="button" class="btn btn-outline-success text-center" id="excelBtn">Export to .csv</button>
+        </div>
+    }
+
+
+<script>
+    //preserves state of checkbox between refreshes.
+    $(document).ready(() => {
+        var checked = JSON.parse(localStorage.getItem('hideTable'));
+        $('#chkHideTable').prop('checked', checked);
+        toggleTable();
+    });
+
+    $('#chkHideTable').on('change', toggleTable);
+
+    function toggleTable() {
+        if ($('#chkHideTable').is(":checked")) {
+            $('#tblResults').hide();
+            localStorage.setItem('hideTable', true);
+        }
+
+        else {
+            $('#tblResults').show();
+            localStorage.setItem('hideTable', false);
+        }
+    }
+
+    $('#uploadFrm').on('submit', (e) => {
+        e.preventDefault();
+
+        //checks if a file has been selected
+        if ($('#formFile').get(0).files.length !== 0) {
+            $('#uploadFrm')[0].submit();
+        }
+    });
+
+    $('#excelBtn').on('click', () => {
+        tableToCSV();
+    });
+
+    //https://www.geeksforgeeks.org/how-to-export-html-table-to-csv-using-javascript/
+    function tableToCSV() {
+
+        // Variable to store the final csv data
+        var csv_data = [];
+
+        // Get each row data
+        var rows = document.getElementsByTagName('tr');
+        for (var i = 0; i < rows.length; i++) {
+
+            // Get each column data
+            var cols = rows[i].querySelectorAll('td,th');
+
+            // Stores each csv row data
+            var csvrow = [];
+            for (var j = 0; j < cols.length; j++) {
+
+                // Get the text data of each cell of
+                // a row and push it to csvrow
+                csvrow.push(cols[j].innerHTML);
+            }
+
+            // Combine each column value with comma
+            csv_data.push(csvrow.join(","));
+        }
+        // combine each row data with new line character
+        csv_data = csv_data.join('\n');
+
+        // Create CSV file object and feed our
+        // csv_data into it
+        CSVFile = new Blob([csv_data], { type: "text/csv" });
+
+        // Create to temporary link to initiate
+        // download process
+        var temp_link = document.createElement('a');
+
+        // Download csv file
+        temp_link.download = "UPS_results.csv";
+        var url = window.URL.createObjectURL(CSVFile);
+        temp_link.href = url;
+
+        // This link should not be displayed
+        temp_link.style.display = "none";
+        document.body.appendChild(temp_link);
+
+        // Automatically click the link to trigger download
+        temp_link.click();
+        document.body.removeChild(temp_link);
+    }
+</script>

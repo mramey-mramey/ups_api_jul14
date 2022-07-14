@@ -1,0 +1,20 @@
+﻿.bg-0 {
+    /*background-color: lightcyan;*/
+}
+
+.bg-1 {
+    /*background-color: lightgray;*/
+}
+
+#excelBtn {
+    margin-bottom: 20px;
+}
+
+.errorTxt {
+    text-align: left;
+    color: red;
+}
+
+#errorTxtArea {
+    margin: 10px 0px 10px 0px;
+}
